@@ -23,17 +23,19 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers // 👈 OBLIGATOIRE pour les joins
   ]
 });
 
 const PREFIX = "+";
+const WELCOME_CHANNEL_ID = "ID_DU_SALON_ICI"; // 🔴 À REMPLACER
 
 /* =========================
    ROTATION DES STATUTS
 ========================= */
 const activities = [
-  "scape qui Flip reset",
+  "scape qui flip reset",
   "scape qui live",
   "scape qui dort",
   "scape qui fait des bruits de clavier",
@@ -46,7 +48,7 @@ let activityIndex = 0;
 
 function setBotPresence() {
   client.user.setPresence({
-    status: "idle", // 🟡 lune jaune
+    status: "idle", // 🟡 inactif
     activities: [
       {
         name: activities[activityIndex],
@@ -64,14 +66,28 @@ function setBotPresence() {
 client.once("ready", () => {
   console.log(`🤖 Connecté en tant que ${client.user.tag}`);
 
-  // Présence initiale
   setBotPresence();
 
-  // 🔁 Rotation + refresh toutes les 60 secondes
   setInterval(() => {
     setBotPresence();
     console.log("🔄 Présence Discord mise à jour");
   }, 60_000);
+});
+
+/* =========================
+   MESSAGE DE BIENVENUE
+========================= */
+client.on("guildMemberAdd", async (member) => {
+  try {
+    const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
+    if (!channel) return;
+
+    await channel.send(
+      `Bienvenu ${member} ! Tu viens d'arriver dans **${member.guild.name}**, j'espère que tu passera un bon séjour !`
+    );
+  } catch (error) {
+    console.error("❌ Erreur message de bienvenue :", error);
+  }
 });
 
 /* =========================
@@ -84,12 +100,10 @@ client.on("messageCreate", async (message) => {
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  /* ===== PING ===== */
   if (command === "ping") {
     return message.reply("🏓 Pong !");
   }
 
-  /* ===== SAY ===== */
   if (command === "say") {
     if (!args.length) {
       return message.reply("❌ Tu dois écrire un message.");
@@ -98,7 +112,6 @@ client.on("messageCreate", async (message) => {
     return message.delete();
   }
 
-  /* ===== INFO ===== */
   if (command === "info") {
     return message.reply(
       `👋 Salut !
