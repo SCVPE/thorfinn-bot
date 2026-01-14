@@ -29,7 +29,7 @@ const client = new Client({
 });
 
 const PREFIX = "+";
-const WELCOME_CHANNEL_ID = "ID_DU_SALON_ICI"; // 🔴 À REMPLACER
+const WELCOME_CHANNEL_ID = "1460324412124434546"; // 🔴 À REMPLACER
 
 /* =========================
    ROTATION DES STATUTS
