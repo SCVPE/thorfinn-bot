@@ -260,12 +260,24 @@ client.on("messageCreate", async (message) => {
 
   if (command === "info") {
     return message.reply(
-      `👋 Salut !
-Prefix : \`${PREFIX}\`
-Commandes disponibles :
-• ${PREFIX}ping
-• ${PREFIX}say <message>
-• ${PREFIX}info`
+      `⭐ **SYSTÈME STAR DU JOUR** ⭐
+
+Chaque jour, le bot analyse l’activité du serveur 💬
+
+👉 Le membre qui envoie **le plus de messages entre 00h et 23h59 (heure FR)** devient la **⭐ Star du jour ⭐**.
+
+🎉 À 00h :
+• le rôle **Star du jour** est attribué
+• un message d’annonce est envoyé
+• les compteurs sont remis à zéro
+
+📊 **Commandes utiles**
+• ${PREFIX}star → voir la star actuelle
+• ${PREFIX}top → classement du jour
+• ${PREFIX}mystats → tes stats personnelles
+• ${PREFIX}help → toutes les commandes
+
+🔥 Parle, participe… et deviens la star !`
     );
   }
 
