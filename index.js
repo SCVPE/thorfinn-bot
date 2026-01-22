@@ -101,6 +101,7 @@ client.on("guildMemberAdd", async (member) => {
 ========================= */
 client.on("messageCreate", (message) => {
   if (message.author.bot) return;
+  if (message.content.startsWith(PREFIX)) return;
 
   const userId = message.author.id;
   messageCounts[userId] = (messageCounts[userId] || 0) + 1;
@@ -168,8 +169,82 @@ client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
   if (!message.content.startsWith(PREFIX)) return;
 
+  const COMMANDS_CHANNEL_ID = "1463652925401465015";
+
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
+
+  if (["top", "mystats", "star", "help"].includes(command)) {
+    const commandsChannel = message.guild.channels.cache.get(COMMANDS_CHANNEL_ID);
+
+    if (!commandsChannel || !commandsChannel.isTextBased()) {
+      return message.reply("❌ Le salon commandes est introuvable ou non textuel. Vérifie l’ID du salon.");
+    }
+
+    const botPerms = commandsChannel.permissionsFor(message.guild.members.me);
+    if (!botPerms || !botPerms.has("SendMessages")) {
+      return message.reply("❌ Je n’ai pas la permission d’écrire dans le salon commandes.");
+    }
+
+    // +help
+    if (command === "help") {
+      return commandsChannel.send(
+        `📖 **COMMANDES DU BOT** 📖
+
+👤 **Membres**
+• ${PREFIX}star → voir la star actuelle
+• ${PREFIX}top → classement du jour
+• ${PREFIX}mystats → tes stats du jour
+• ${PREFIX}help → afficher cette aide
+
+👑 **Admins**
+• ${PREFIX}teststar
+• ${PREFIX}resetstar
+• ${PREFIX}forcestar`
+      );
+    }
+
+    const sorted = Object.entries(messageCounts).sort((a, b) => b[1] - a[1]);
+
+    // +star
+    if (command === "star") {
+      if (!sorted.length) {
+        return commandsChannel.send("⭐ Aucune star pour le moment.");
+      }
+      const member = await message.guild.members.fetch(sorted[0][0]);
+      return commandsChannel.send(
+        `⭐ **Star actuelle du jour** : ${member} — ${sorted[0][1]} messages`
+      );
+    }
+
+    // +top
+    if (command === "top") {
+      if (!sorted.length) {
+        return commandsChannel.send("🏆 Aucun message aujourd’hui.");
+      }
+
+      const top = sorted.slice(0, 5);
+      let text = "🏆 **TOP 5 DU JOUR** 🏆\n\n";
+
+      for (let i = 0; i < top.length; i++) {
+        const m = await message.guild.members.fetch(top[i][0]);
+        text += `${i + 1}️⃣ ${m} — ${top[i][1]} messages\n`;
+      }
+
+      return commandsChannel.send(text);
+    }
+
+    // +mystats
+    if (command === "mystats") {
+      const count = messageCounts[message.author.id] || 0;
+      const position =
+        sorted.findIndex(([id]) => id === message.author.id) + 1 || "—";
+
+      return commandsChannel.send(
+        `📊 **Tes stats aujourd’hui**\n💬 Messages : ${count}\n🏅 Position : ${position}`
+      );
+    }
+  }
 
   if (command === "ping") {
     return message.reply("🏓 Pong !");
@@ -195,7 +270,7 @@ Commandes disponibles :
   }
 
   if (command === "teststar") {
-    if (!message.member.permissions.has("Administrator")) {
+    if (!message.member || !message.member.permissions.has("Administrator")) {
       return message.reply("❌ Tu n'as pas la permission d'utiliser cette commande.");
     }
 
@@ -234,7 +309,7 @@ ${member} serait la **⭐ star du jour ⭐** si on était à minuit 👀`
   }
 
   if (command === "resetstar") {
-    if (!message.member.permissions.has("Administrator")) {
+    if (!message.member || !message.member.permissions.has("Administrator")) {
       return message.reply("❌ Tu n'as pas la permission d'utiliser cette commande.");
     }
 
@@ -278,6 +353,50 @@ Le compteur repart de zéro 🔥`
     );
 
     return message.reply("✅ Star du jour réinitialisée avec succès.");
+  }
+
+  if (command === "forcestar") {
+    if (!message.member || !message.member.permissions.has("Administrator")) {
+      return message.reply("❌ Tu n'as pas la permission d'utiliser cette commande.");
+    }
+
+    const guild = message.guild;
+    const starRole = guild.roles.cache.get(STAR_ROLE_ID);
+    const generalChannel = guild.channels.cache.get(GENERAL_CHANNEL_ID);
+
+    if (!starRole || !generalChannel) {
+      return message.reply("❌ Rôle ou salon introuvable.");
+    }
+
+    const topUserId = Object.keys(messageCounts).reduce(
+      (a, b) => (messageCounts[a] > messageCounts[b] ? a : b),
+      null
+    );
+
+    if (!topUserId) {
+      return message.reply("❌ Aucun message comptabilisé depuis 00h.");
+    }
+
+    const member = await guild.members.fetch(topUserId);
+
+    // Retirer le rôle à tous les autres
+    for (const m of starRole.members.values()) {
+      await m.roles.remove(starRole);
+    }
+
+    // Donner le rôle au leader actuel
+    await member.roles.add(starRole);
+
+    await generalChannel.send(
+      `⭐ **STAR DU JOUR (ACTUELLE)** ⭐
+
+Pour l'instant, depuis **00h**, la personne la plus active est :
+👉 ${member} 💬🔥
+
+La journée n'est pas finie 👀`
+    );
+
+    return message.reply("✅ Star du jour actuelle attribuée.");
   }
 });
 
