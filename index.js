@@ -109,51 +109,57 @@ client.on("messageCreate", (message) => {
 /* =========================
    STAR DU JOUR (00H00)
 ========================= */
-cron.schedule("0 0 * * *", async () => {
-  try {
-    const guild = client.guilds.cache.first();
-    if (!guild) return;
+cron.schedule(
+  "0 0 * * *",
+  async () => {
+    try {
+      const guild = client.guilds.cache.first();
+      if (!guild) return;
 
-    const starRole = guild.roles.cache.get(STAR_ROLE_ID);
-    const generalChannel = guild.channels.cache.get(GENERAL_CHANNEL_ID);
+      const starRole = guild.roles.cache.get(STAR_ROLE_ID);
+      const generalChannel = guild.channels.cache.get(GENERAL_CHANNEL_ID);
 
-    if (!starRole || !generalChannel) return;
+      if (!starRole || !generalChannel) return;
 
-    const topUserId = Object.keys(messageCounts).reduce((a, b) =>
-      messageCounts[a] > messageCounts[b] ? a : b,
-      null
-    );
+      const topUserId = Object.keys(messageCounts).reduce(
+        (a, b) => (messageCounts[a] > messageCounts[b] ? a : b),
+        null
+      );
 
-    if (!topUserId) return;
+      if (!topUserId) return;
 
-    const member = await guild.members.fetch(topUserId);
+      const member = await guild.members.fetch(topUserId);
 
-    // Retirer le rôle à l'ancien gagnant
-    for (const m of starRole.members.values()) {
-      await m.roles.remove(starRole);
-    }
+      // Retirer le rôle à l'ancien gagnant
+      for (const m of starRole.members.values()) {
+        await m.roles.remove(starRole);
+      }
 
-    // Donner le rôle au nouveau
-    await member.roles.add(starRole);
+      // Donner le rôle au nouveau
+      await member.roles.add(starRole);
 
-    // Message d'annonce
-    await generalChannel.send(
-      `🎉 **BRAVO ${member} !** 🎉
+      // Message d'annonce
+      await generalChannel.send(
+        `🎉 **BRAVO ${member} !** 🎉
 
 C'est toi qui as envoyé le plus de messages aujourd'hui 💬🔥  
 Tu es donc la **⭐ STAR DU JOUR ⭐**
 
 Profite bien de tes **24h**, car demain… tout recommence 👀`
-    );
+      );
 
-    console.log(`⭐ Star du jour : ${member.user.tag}`);
+      console.log(`⭐ Star du jour : ${member.user.tag}`);
 
-    // Reset des stats
-    messageCounts = {};
-  } catch (error) {
-    console.error("❌ Erreur Star du jour :", error);
+      // Reset des stats
+      messageCounts = {};
+    } catch (error) {
+      console.error("❌ Erreur Star du jour :", error);
+    }
+  },
+  {
+    timezone: "Europe/Paris"
   }
-});
+);
 
 /* =========================
    COMMANDES PREFIX
@@ -186,6 +192,92 @@ Commandes disponibles :
 • ${PREFIX}say <message>
 • ${PREFIX}info`
     );
+  }
+
+  if (command === "teststar") {
+    if (!message.member.permissions.has("Administrator")) {
+      return message.reply("❌ Tu n'as pas la permission d'utiliser cette commande.");
+    }
+
+    const guild = message.guild;
+    const starRole = guild.roles.cache.get(STAR_ROLE_ID);
+    const generalChannel = guild.channels.cache.get(GENERAL_CHANNEL_ID);
+
+    if (!starRole || !generalChannel) {
+      return message.reply("❌ Rôle ou salon introuvable.");
+    }
+
+    const topUserId = Object.keys(messageCounts).reduce(
+      (a, b) => (messageCounts[a] > messageCounts[b] ? a : b),
+      null
+    );
+
+    if (!topUserId) {
+      return message.reply("❌ Aucun message comptabilisé aujourd’hui.");
+    }
+
+    const member = await guild.members.fetch(topUserId);
+
+    for (const m of starRole.members.values()) {
+      await m.roles.remove(starRole);
+    }
+
+    await member.roles.add(starRole);
+
+    await generalChannel.send(
+      `🧪 **TEST STAR DU JOUR** 🧪
+
+${member} serait la **⭐ star du jour ⭐** si on était à minuit 👀`
+    );
+
+    return message.reply("✅ Test effectué avec succès.");
+  }
+
+  if (command === "resetstar") {
+    if (!message.member.permissions.has("Administrator")) {
+      return message.reply("❌ Tu n'as pas la permission d'utiliser cette commande.");
+    }
+
+    const guild = message.guild;
+    const starRole = guild.roles.cache.get(STAR_ROLE_ID);
+    const generalChannel = guild.channels.cache.get(GENERAL_CHANNEL_ID);
+
+    if (!starRole || !generalChannel) {
+      return message.reply("❌ Rôle ou salon introuvable.");
+    }
+
+    const topUserId = Object.keys(messageCounts).reduce(
+      (a, b) => (messageCounts[a] > messageCounts[b] ? a : b),
+      null
+    );
+
+    if (!topUserId) {
+      return message.reply("❌ Aucun message comptabilisé pour le moment.");
+    }
+
+    const member = await guild.members.fetch(topUserId);
+
+    // Retirer le rôle à tous
+    for (const m of starRole.members.values()) {
+      await m.roles.remove(starRole);
+    }
+
+    // Donner le rôle au nouveau gagnant
+    await member.roles.add(starRole);
+
+    // Reset des stats après reset manuel
+    messageCounts = {};
+
+    await generalChannel.send(
+      `🔄 **RESET STAR DU JOUR** 🔄
+
+La star du jour a été réinitialisée manuellement.
+⭐ **Nouvelle star : ${member}** ⭐
+
+Le compteur repart de zéro 🔥`
+    );
+
+    return message.reply("✅ Star du jour réinitialisée avec succès.");
   }
 });
 
