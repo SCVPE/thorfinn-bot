@@ -1,6 +1,7 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
 const express = require("express");
+const cron = require("node-cron");
 
 /* =========================
    EXPRESS (OBLIGATOIRE POUR RENDER)
@@ -24,12 +25,19 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers // 👈 OBLIGATOIRE pour les joins
+    GatewayIntentBits.GuildMembers
   ]
 });
 
 const PREFIX = "+";
-const WELCOME_CHANNEL_ID = "1460324412124434546"; // 🔴 À REMPLACER
+const WELCOME_CHANNEL_ID = "1460324412124434546";
+const STAR_ROLE_ID = "1463698623043735612";
+const GENERAL_CHANNEL_ID = "1460277724063994210";
+
+/* =========================
+   COMPTEUR DE MESSAGES (JOURNALIER)
+========================= */
+let messageCounts = {};
 
 /* =========================
    ROTATION DES STATUTS
@@ -48,11 +56,11 @@ let activityIndex = 0;
 
 function setBotPresence() {
   client.user.setPresence({
-    status: "idle", // 🟡 inactif
+    status: "idle",
     activities: [
       {
         name: activities[activityIndex],
-        type: 3 // 👀 WATCHING
+        type: 3
       }
     ]
   });
@@ -67,11 +75,9 @@ client.once("ready", () => {
   console.log(`🤖 Connecté en tant que ${client.user.tag}`);
 
   setBotPresence();
+  setInterval(setBotPresence, 60_000);
 
-  setInterval(() => {
-    setBotPresence();
-    console.log("🔄 Présence Discord mise à jour");
-  }, 60_000);
+  console.log("⏰ Star du jour programmée à 00h00");
 });
 
 /* =========================
@@ -87,6 +93,65 @@ client.on("guildMemberAdd", async (member) => {
     );
   } catch (error) {
     console.error("❌ Erreur message de bienvenue :", error);
+  }
+});
+
+/* =========================
+   COMPTER LES MESSAGES
+========================= */
+client.on("messageCreate", (message) => {
+  if (message.author.bot) return;
+
+  const userId = message.author.id;
+  messageCounts[userId] = (messageCounts[userId] || 0) + 1;
+});
+
+/* =========================
+   STAR DU JOUR (00H00)
+========================= */
+cron.schedule("0 0 * * *", async () => {
+  try {
+    const guild = client.guilds.cache.first();
+    if (!guild) return;
+
+    const starRole = guild.roles.cache.get(STAR_ROLE_ID);
+    const generalChannel = guild.channels.cache.get(GENERAL_CHANNEL_ID);
+
+    if (!starRole || !generalChannel) return;
+
+    const topUserId = Object.keys(messageCounts).reduce((a, b) =>
+      messageCounts[a] > messageCounts[b] ? a : b,
+      null
+    );
+
+    if (!topUserId) return;
+
+    const member = await guild.members.fetch(topUserId);
+
+    // Retirer le rôle à l'ancien gagnant
+    for (const m of starRole.members.values()) {
+      await m.roles.remove(starRole);
+    }
+
+    // Donner le rôle au nouveau
+    await member.roles.add(starRole);
+
+    // Message d'annonce
+    await generalChannel.send(
+      `🎉 **BRAVO ${member} !** 🎉
+
+C'est toi qui as envoyé le plus de messages aujourd'hui 💬🔥  
+Tu es donc la **⭐ STAR DU JOUR ⭐**
+
+Profite bien de tes **24h**, car demain… tout recommence 👀`
+    );
+
+    console.log(`⭐ Star du jour : ${member.user.tag}`);
+
+    // Reset des stats
+    messageCounts = {};
+  } catch (error) {
+    console.error("❌ Erreur Star du jour :", error);
   }
 });
 
