@@ -37,7 +37,11 @@ const GENERAL_CHANNEL_ID = "1460277724063994210";
 /* =========================
    COMPTEUR DE MESSAGES (JOURNALIER)
 ========================= */
+
 let messageCounts = {};
+
+// Historique des stars (date -> userId)
+let starHistory = [];
 
 /* =========================
    ROTATION DES STATUTS
@@ -151,6 +155,19 @@ Profite bien de tes **24h**, car demain… tout recommence 👀`
 
       console.log(`⭐ Star du jour : ${member.user.tag}`);
 
+      // Sauvegarde dans l'historique
+      const today = new Date().toLocaleDateString("fr-FR", {
+        timeZone: "Europe/Paris"
+      });
+
+      starHistory.unshift({
+        date: today,
+        userId: member.id
+      });
+
+      // Limite l'historique aux 30 derniers jours
+      starHistory = starHistory.slice(0, 30);
+
       // Reset des stats
       messageCounts = {};
     } catch (error) {
@@ -174,7 +191,7 @@ client.on("messageCreate", async (message) => {
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  if (["top", "mystats", "star", "help"].includes(command)) {
+  if (["top", "mystats", "star", "help", "history"].includes(command)) {
     const commandsChannel = message.guild.channels.cache.get(COMMANDS_CHANNEL_ID);
 
     if (!commandsChannel || !commandsChannel.isTextBased()) {
@@ -243,6 +260,24 @@ client.on("messageCreate", async (message) => {
       return commandsChannel.send(
         `📊 **Tes stats aujourd’hui**\n💬 Messages : ${count}\n🏅 Position : ${position}`
       );
+    }
+
+    // +history
+    if (command === "history") {
+      if (!starHistory.length) {
+        return commandsChannel.send("📜 Aucun historique disponible pour le moment.");
+      }
+
+      let text = "📜 **HISTORIQUE DES STARS DU JOUR** 📜\n\n";
+
+      for (const entry of starHistory) {
+        const member = await message.guild.members.fetch(entry.userId).catch(() => null);
+        if (member) {
+          text += `⭐ ${entry.date} — ${member}\n`;
+        }
+      }
+
+      return commandsChannel.send(text);
     }
   }
 
