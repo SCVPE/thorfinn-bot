@@ -3,6 +3,15 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const express = require("express");
 const cron = require("node-cron");
 
+// Gestion des crashs silencieux
+process.on("unhandledRejection", (error) => {
+  console.error("❌ Unhandled promise rejection :", error);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("❌ Uncaught exception :", error);
+});
+
 /* =========================
    EXPRESS (OBLIGATOIRE POUR RENDER)
 ========================= */
@@ -27,6 +36,12 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers
   ]
+});
+
+client.on("error", console.error);
+client.on("warn", console.warn);
+client.on("shardError", (error) => {
+  console.error("❌ Shard error :", error);
 });
 
 const PREFIX = "+";
@@ -82,6 +97,9 @@ client.once("ready", () => {
   setInterval(setBotPresence, 60_000);
 
   console.log("⏰ Star du jour programmée à 00h00");
+  setInterval(() => {
+    console.log("💓 Bot heartbeat OK");
+  }, 300_000);
 });
 
 /* =========================
@@ -450,4 +468,8 @@ La journée n'est pas finie 👀`
 /* =========================
    LOGIN
 ========================= */
+if (!process.env.DISCORD_TOKEN) {
+  console.error("❌ DISCORD_TOKEN manquant dans les variables d'environnement");
+  process.exit(1);
+}
 client.login(process.env.DISCORD_TOKEN);
