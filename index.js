@@ -119,17 +119,6 @@ client.on("guildMemberAdd", async (member) => {
 });
 
 /* =========================
-   COMPTER LES MESSAGES
-========================= */
-client.on("messageCreate", (message) => {
-  if (message.author.bot) return;
-  if (message.content.startsWith(PREFIX)) return;
-
-  const userId = message.author.id;
-  messageCounts[userId] = (messageCounts[userId] || 0) + 1;
-});
-
-/* =========================
    STAR DU JOUR (00H00)
 ========================= */
 cron.schedule(
@@ -208,6 +197,12 @@ Profite bien de tes **24h**, car demain… tout recommence 👀`
 ========================= */
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
+
+  if (!message.content.startsWith(PREFIX)) {
+    const userId = message.author.id;
+    messageCounts[userId] = (messageCounts[userId] || 0) + 1;
+  }
+
   if (!message.content.startsWith(PREFIX)) return;
 
   const COMMANDS_CHANNEL_ID = "1463652925401465015";
@@ -508,4 +503,6 @@ if (!process.env.DISCORD_TOKEN) {
   console.error("❌ DISCORD_TOKEN manquant dans les variables d'environnement");
   process.exit(1);
 }
+
+console.log("🚀 Tentative de connexion Discord avec le token présent :", !!process.env.DISCORD_TOKEN);
 client.login(process.env.DISCORD_TOKEN);
