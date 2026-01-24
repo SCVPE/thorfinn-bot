@@ -151,7 +151,13 @@ cron.schedule(
 
       if (!topUserId) return;
 
-      const member = await guild.members.fetch(topUserId);
+      let member;
+      try {
+        member = await guild.members.fetch(topUserId);
+      } catch (err) {
+        console.warn("⚠️ Star du jour ignorée, membre introuvable :", topUserId);
+        return;
+      }
 
       // Retirer le rôle à l'ancien gagnant
       for (const m of starRole.members.values()) {
@@ -246,7 +252,12 @@ client.on("messageCreate", async (message) => {
       if (!sorted.length) {
         return commandsChannel.send("⭐ Aucune star pour le moment.");
       }
-      const member = await message.guild.members.fetch(sorted[0][0]);
+      let member;
+      try {
+        member = await message.guild.members.fetch(sorted[0][0]);
+      } catch (err) {
+        return commandsChannel.send("⚠️ La star actuelle a quitté le serveur.");
+      }
       return commandsChannel.send(
         `⭐ **Star actuelle du jour** : ${member} — ${sorted[0][1]} messages`
       );
@@ -262,7 +273,12 @@ client.on("messageCreate", async (message) => {
       let text = "🏆 **TOP 5 DU JOUR** 🏆\n\n";
 
       for (let i = 0; i < top.length; i++) {
-        const m = await message.guild.members.fetch(top[i][0]);
+        let m;
+        try {
+          m = await message.guild.members.fetch(top[i][0]);
+        } catch {
+          continue;
+        }
         text += `${i + 1}️⃣ ${m} — ${top[i][1]} messages\n`;
       }
 
@@ -289,7 +305,12 @@ client.on("messageCreate", async (message) => {
       let text = "📜 **HISTORIQUE DES STARS DU JOUR** 📜\n\n";
 
       for (const entry of starHistory) {
-        const member = await message.guild.members.fetch(entry.userId).catch(() => null);
+        let member;
+        try {
+          member = await message.guild.members.fetch(entry.userId);
+        } catch {
+          continue;
+        }
         if (member) {
           text += `⭐ ${entry.date} — ${member}\n`;
         }
@@ -356,7 +377,12 @@ Chaque jour, le bot analyse l’activité du serveur 💬
       return message.reply("❌ Aucun message comptabilisé aujourd’hui.");
     }
 
-    const member = await guild.members.fetch(topUserId);
+    let member;
+    try {
+      member = await guild.members.fetch(topUserId);
+    } catch {
+      return message.reply("⚠️ Le membre ciblé n’est plus sur le serveur.");
+    }
 
     for (const m of starRole.members.values()) {
       await m.roles.remove(starRole);
@@ -395,7 +421,12 @@ ${member} serait la **⭐ star du jour ⭐** si on était à minuit 👀`
       return message.reply("❌ Aucun message comptabilisé pour le moment.");
     }
 
-    const member = await guild.members.fetch(topUserId);
+    let member;
+    try {
+      member = await guild.members.fetch(topUserId);
+    } catch {
+      return message.reply("⚠️ Le membre ciblé n’est plus sur le serveur.");
+    }
 
     // Retirer le rôle à tous
     for (const m of starRole.members.values()) {
@@ -442,7 +473,12 @@ Le compteur repart de zéro 🔥`
       return message.reply("❌ Aucun message comptabilisé depuis 00h.");
     }
 
-    const member = await guild.members.fetch(topUserId);
+    let member;
+    try {
+      member = await guild.members.fetch(topUserId);
+    } catch {
+      return message.reply("⚠️ Le membre ciblé n’est plus sur le serveur.");
+    }
 
     // Retirer le rôle à tous les autres
     for (const m of starRole.members.values()) {
